@@ -167,6 +167,9 @@ public abstract class BarcodeScannerView extends FrameLayout implements Camera.P
         mSquaredFinder = isSquareViewFinder;
         mViewFinderView.setSquareViewFinder(mSquaredFinder);
         mViewFinderView.setupViewFinder();
+        mPreview.setSquareViewFinder(mSquaredFinder);
+        mPreview.setupViewFinder();
+
     }
     public void setBorderAlpha(float borderAlpha) {
         mBorderAlpha = borderAlpha;

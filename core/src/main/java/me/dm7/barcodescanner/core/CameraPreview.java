@@ -2,7 +2,10 @@ package me.dm7.barcodescanner.core;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.CornerPathEffect;
+import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.Handler;
 import android.util.AttributeSet;
@@ -15,9 +18,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
-public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
+public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback, IViewFinder {
     private static final String TAG = "CameraPreview";
 
     private CameraWrapper mCameraWrapper;
@@ -28,6 +33,15 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     private boolean mShouldScaleToFill = true;
     private Camera.PreviewCallback mPreviewCallback;
     private float mAspectTolerance = 0.1f;
+
+    private static final float PORTRAIT_WIDTH_RATIO = 6f/8;
+    private static final float PORTRAIT_WIDTH_HEIGHT_RATIO = 0.75f;
+
+    private static final float LANDSCAPE_HEIGHT_RATIO = 5f/8;
+    private static final float LANDSCAPE_WIDTH_HEIGHT_RATIO = 1.4f;
+    private static final int MIN_DIMENSION_DIFF = 50;
+    private static final float DEFAULT_SQUARE_DIMENSION_RATIO = 5f / 8;
+    protected boolean mSquareViewFinder;
 
     public CameraPreview(Context context, CameraWrapper cameraWrapper, Camera.PreviewCallback previewCallback) {
         super(context);
@@ -227,10 +241,9 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     }
 
     private Camera.Size getOptimalPreviewSize() {
-        if(mCameraWrapper == null) {
+        if (mCameraWrapper == null) {
             return null;
         }
-
         List<Camera.Size> sizes = mCameraWrapper.mCamera.getParameters().getSupportedPreviewSizes();
         int w = getWidth();
         int h = getHeight();
@@ -240,25 +253,54 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
             w = portraitWidth;
         }
 
-        double targetRatio = (double) w / h;
         if (sizes == null) return null;
 
         Camera.Size optimalSize = null;
         double minDiff = Double.MAX_VALUE;
 
         int targetHeight = h;
+        Collections.sort(sizes, new Comparator<Camera.Size>() {
+            @Override
+            public int compare(Camera.Size lhs, Camera.Size rhs) {
+                return lhs.height - rhs.height;
+            }
+        });
 
-        // Try to find an size match aspect ratio and size
-        for (Camera.Size size : sizes) {
-            double ratio = (double) size.width / size.height;
-            if (Math.abs(ratio - targetRatio) > mAspectTolerance) continue;
-            if (Math.abs(size.height - targetHeight) < minDiff) {
-                optimalSize = size;
-                minDiff = Math.abs(size.height - targetHeight);
+        int orientation = DisplayUtils.getScreenOrientation(getContext());
+        int width;
+        int height;
+        if(mSquareViewFinder) {
+            if(orientation != Configuration.ORIENTATION_PORTRAIT) {
+                height = (int) (getHeight() * DEFAULT_SQUARE_DIMENSION_RATIO);
+                width = height;
+            } else {
+                width = (int) (getWidth() * DEFAULT_SQUARE_DIMENSION_RATIO);
+                height = width;
+            }
+        } else {
+            if(orientation != Configuration.ORIENTATION_PORTRAIT) {
+                height = (int) (getHeight() * LANDSCAPE_HEIGHT_RATIO);
+                width = (int) (LANDSCAPE_WIDTH_HEIGHT_RATIO * height);
+            } else {
+                width = (int) (getWidth() * PORTRAIT_WIDTH_RATIO);
+                height = (int) (PORTRAIT_WIDTH_HEIGHT_RATIO * width);
             }
         }
 
-        // Cannot find the one match the aspect ratio, ignore the requirement
+        if(width > getWidth()) {
+            width = getWidth() - MIN_DIMENSION_DIFF;
+        }
+        if(height > getHeight()) {
+            height = getHeight() - MIN_DIMENSION_DIFF;
+        }
+
+        for (Camera.Size size : sizes) {
+            if (size.height > height && size.width > width) {
+                optimalSize = size;
+                break;
+            }
+        }
+
         if (optimalSize == null) {
             minDiff = Double.MAX_VALUE;
             for (Camera.Size size : sizes) {
@@ -289,6 +331,72 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
                 mCameraWrapper.mCamera.cancelAutoFocus();
             }
         }
+    }
+
+    @Override
+    public void setLaserColor(int laserColor) {
+
+    }
+
+    @Override
+    public void setMaskColor(int maskColor) {
+
+    }
+
+    @Override
+    public void setBorderColor(int borderColor) {
+
+    }
+
+    @Override
+    public void setBorderStrokeWidth(int borderStrokeWidth) {
+
+    }
+
+    @Override
+    public void setBorderLineLength(int borderLineLength) {
+
+    }
+
+    @Override
+    public void setLaserEnabled(boolean isLaserEnabled) {
+
+    }
+
+    @Override
+    public void setBorderCornerRounded(boolean isBorderCornersRounded) {
+
+    }
+
+    @Override
+    public void setBorderAlpha(float alpha) {
+
+    }
+
+    @Override
+    public void setBorderCornerRadius(int borderCornersRadius) {
+
+    }
+
+    @Override
+    public void setViewFinderOffset(int offset) {
+
+    }
+
+    // TODO: Need a better way to configure this. Revisit when working on 2.0
+    @Override
+    public void setSquareViewFinder(boolean set) {
+        mSquareViewFinder = set;
+    }
+
+    @Override
+    public void setupViewFinder() {
+
+    }
+
+    @Override
+    public Rect getFramingRect() {
+        return null;
     }
 
     private Runnable doAutoFocus = new Runnable() {
