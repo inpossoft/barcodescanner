@@ -365,7 +365,6 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
 
     @Override
     public void setBorderCornerRounded(boolean isBorderCornersRounded) {
-
     }
 
     @Override
